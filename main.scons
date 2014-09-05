@@ -1,0 +1,74 @@
+# MCU code for AVRDUDE/avr-gcc
+MCU = 'atmega2560'
+
+# AVRDUDE programmer name
+PROGRAMMER = 'avrisp'
+
+# Binary outfile name
+OUT = 'main'
+
+# Files to compile
+SRC = Glob('src/*.c')
+
+# Fuse settings
+FUSE = { 'L': 0xFF, 'H': 0xD7, 'E': 0xFF }
+
+# Comm. port (use 'usb' for USBtinyISP/AVR Dragon/etc.)
+PORT = '/dev/ttyUSB0'
+
+# AVRDUDE bitrate, varies with programmer
+AVRDUDE_BITRATE = 19200
+
+# Base AVRDUDE programming command
+AVRDUDE_CMD = 'avrdude -P %s -c %s -p %s -b %d' % (PORT, PROGRAMMER, MCU, AVRDUDE_BITRATE)
+
+# Optional defines (include in CPPDEFINES below)
+F_CPU = 8000000
+
+env = Environment(
+    CC         = 'avr-gcc',
+    CFLAGS     = '-Wall -Os -mmcu=%s -std=c99 -ffunction-sections -fdata-sections' % MCU,
+    LINKFLAGS  = '-mmcu=%s' % MCU,
+    CPPDEFINES = { 
+        'F_CPU': F_CPU
+    }
+)
+
+# Upload to flash
+upload = Command('upload', None, '%s -U flash:w:build/%s.hex' % (AVRDUDE_CMD, OUT))
+
+# Strip binary
+objcopy = Command('objcopy', None, 'avr-objcopy -j .text -j .data -O ihex build/%s.elf build/%s.hex' % (OUT, OUT))
+
+# Show flash size
+size = Command('size', None, 'avr-size -C --mcu=%s build/%s.elf' % (MCU, OUT))
+
+# Verify connection (?)
+verify = Command('verify', None, '%s' % AVRDUDE_CMD)
+
+# Burn fuses
+set_fuses = Command('set_fuses', None, '%s -u -U lfuse:w:%#x:m -U hfuse:w:%#x:m -U efuse:w:%#x:m' % (AVRDUDE_CMD, FUSE['L'], FUSE['H'], FUSE['E']))
+
+# Build program
+build = env.Program('%s.elf' % OUT, SRC)
+
+# Erase flash
+erase = Command('erase', None, '%s -e' % AVRDUDE_CMD)
+
+# Open serial terminal with picocom
+serial = Command('serial', None, 'picocom %s' % PORT)
+
+Alias('upload-serial', [ build, upload, serial ])
+Alias('size', size)
+Alias('upload', upload)
+Alias('serial', serial)
+Alias('verify', verify)
+Alias('set_fuses', set_fuses)
+
+# Deps
+Depends(size, build)
+Depends(upload, objcopy)
+Depends(objcopy, build)
+
+# Default target
+Default(build)
