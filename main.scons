@@ -2,36 +2,41 @@
 MCU = 'atmega2560'
 
 # AVRDUDE programmer name
-PROGRAMMER = 'avrisp'
+PROGRAMMER = 'usbtiny'
 
 # Binary outfile name
 OUT = 'main'
 
 # Files to compile
-SRC = Glob('src/*.c')
+SRC = Glob('*/*.c')
 
 # Fuse settings
 FUSE = { 'L': 0xFF, 'H': 0xD7, 'E': 0xFF }
 
-# Comm. port (use 'usb' for USBtinyISP/AVR Dragon/etc.)
-PORT = '/dev/ttyUSB0'
+# Programming port (use 'usb' for USBtinyISP/AVR Dragon/etc.)
+AVRDUDE_PORT = 'usb'
+
+# Serial port
+SERIAL_PORT = '/dev/ttyUSB0'
 
 # AVRDUDE bitrate, varies with programmer
 AVRDUDE_BITRATE = 19200
 
 # Base AVRDUDE programming command
-AVRDUDE_CMD = 'avrdude -P %s -c %s -p %s -b %d' % (PORT, PROGRAMMER, MCU, AVRDUDE_BITRATE)
+AVRDUDE_CMD = 'avrdude -P %s -c %s -p %s -b %d' % (AVRDUDE_PORT, PROGRAMMER, 
+                                                   MCU, AVRDUDE_BITRATE)
 
-# Optional defines (include in CPPDEFINES below)
-F_CPU = 8000000
+CPPDEFINES = {
+
+    # 8MHz clock
+    'F_CPU': 8000000
+}
 
 env = Environment(
     CC         = 'avr-gcc',
     CFLAGS     = '-Wall -Os -mmcu=%s -std=c99 -ffunction-sections -fdata-sections' % MCU,
     LINKFLAGS  = '-mmcu=%s' % MCU,
-    CPPDEFINES = { 
-        'F_CPU': F_CPU
-    }
+    CPPDEFINES = CPPDEFINES
 )
 
 # Upload to flash
@@ -56,7 +61,7 @@ build = env.Program('%s.elf' % OUT, SRC)
 erase = Command('erase', None, '%s -e' % AVRDUDE_CMD)
 
 # Open serial terminal with picocom
-serial = Command('serial', None, 'picocom %s' % PORT)
+serial = Command('serial', None, 'picocom %s' % SERIAL_PORT)
 
 Alias('upload-serial', [ build, upload, serial ])
 Alias('size', size)
