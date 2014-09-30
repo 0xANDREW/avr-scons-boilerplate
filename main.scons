@@ -8,7 +8,7 @@ PROGRAMMER = 'usbtiny'
 OUT = 'main'
 
 # Files to compile
-SRC = Glob('*/*.c')
+SRC = Glob('src/*.c')
 
 # Fuse settings
 FUSE = { 'L': 0xFF, 'H': 0xD7, 'E': 0xFF }
